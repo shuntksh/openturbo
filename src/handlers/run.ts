@@ -209,17 +209,22 @@ async function runStepsWithDeps(
 				completed.add(step.name);
 				continue;
 			}
-			if (!canRun(step)) continue;
+			const depStates = (step.dependsOn ?? [])
+				.map((dep) => states.get(dep))
+				.filter((d) => d && stepNames.has(d.step.name));
 
-			const depFailed = (step.dependsOn ?? []).some((dep) => {
-				const depState = states.get(dep);
-				return depState && depState.status === "failed";
-			});
-
-			if (depFailed) {
+			// Skip this step if any of its dependencies failed or were skipped.
+			if (
+				depStates.some((s) => s.status === "failed" || s.status === "skipped")
+			) {
 				state.status = "skipped";
 				printer?.updateStep(step.name, { status: "skipped" });
 				completed.add(step.name);
+				continue;
+			}
+
+			// Wait if any dependencies are not yet done.
+			if (depStates.some((s) => s.status !== "done")) {
 				continue;
 			}
 
@@ -316,7 +321,14 @@ export async function handleRun(options: HandleRunOptions): Promise<number> {
 		printer,
 	};
 
-	const stepsToRun = resolveStepsWithDeps(steps, stepNames);
+	let stepsToRun: Step[];
+	try {
+		stepsToRun = resolveStepsWithDeps(steps, stepNames);
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		console.error(c("red", `Error: ${message}`));
+		return 1;
+	}
 	const startTime = performance.now();
 
 	const states = await runStepsWithDeps(

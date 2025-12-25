@@ -68,7 +68,13 @@ async function main(): Promise<void> {
 		}
 
 		const steps = getSteps(workflow);
-		await handleGraph(steps, c, gitRoot);
+		try {
+			await handleGraph(steps, c, gitRoot);
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			console.error(c("red", `Error: ${message}`));
+			process.exit(1);
+		}
 		process.exit(0);
 	}
 

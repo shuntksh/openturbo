@@ -17,9 +17,9 @@ export type ActionResult = {
  * @param fn - The async function to execute
  * @returns Action result with duration
  */
-export async function withTiming<T extends Omit<ActionResult, "duration">>(
-	fn: () => Promise<T>,
-): Promise<T & { duration: number }> {
+export async function withTiming(
+	fn: () => Promise<Omit<ActionResult, "duration">>,
+): Promise<ActionResult> {
 	const start = performance.now();
 	try {
 		const result = await fn();
@@ -32,6 +32,6 @@ export async function withTiming<T extends Omit<ActionResult, "duration">>(
 			success: false,
 			output: message,
 			duration,
-		} as T & { duration: number };
+		};
 	}
 }

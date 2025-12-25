@@ -33,7 +33,10 @@ export async function handleGraph(
 
 		visiting.add(name);
 		const step = stepMap.get(name);
-		if (!step || !step.dependsOn || step.dependsOn.length === 0) {
+		if (!step) {
+			throw new Error(`Step "${name}" not found`);
+		}
+		if (!step.dependsOn || step.dependsOn.length === 0) {
 			depths.set(name, 0);
 			visiting.delete(name);
 			return 0;
