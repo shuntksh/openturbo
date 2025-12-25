@@ -1,6 +1,24 @@
-# openturbo
+<p align="center">
+  <h1 align="center">OpenTurbo</h1>
+  <p align="center">
+    <strong>TurboRepo-style task runner for Bun</strong>
+    <br />
+    <em>Lightweight, zero-dependency task runner with Git worktree awareness</em>
+  </p>
+</p>
 
-A lightweight, zero-dependency task runner with Git worktree awareness and turborepo-style Bun native parallel task execution.
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#step-types">Step Types</a> •
+  <a href="#branch-filtering">Branch Filtering</a>
+</p>
+
+`OpenTurbo` is a high-performance task runner designed for Bun. It brings TurboRepo-style parallel execution and dependency graph awareness to any project, with first-class support for Git worktrees and branch-conditional tasks.
+
+---
+![OpenTurbo demo](src/doc/demo.gif)
 
 ## Features
 
@@ -8,14 +26,6 @@ A lightweight, zero-dependency task runner with Git worktree awareness and turbo
 - **Git worktree support**: Copy files between worktrees, branch-specific filtering for worktree contexts
 - **Workspace-aware execution**: Parallel NPM script execution across npm/bun workspaces with dependency ordering
 - **Dependency graph**: Define step dependencies with `dependsOn` for sequential or parallel execution
-
-## Installation
-
-Requires [Bun](https://bun.sh).
-
-```sh
-bun add -D @shuntksh/workflows
-```
 
 ## Usage
 
@@ -111,7 +121,7 @@ Copy files from another worktree:
 
 ### `bun`
 
-Run scripts across workspace packages with dependency ordering (turborepo-style):
+Run scripts across workspace packages with dependency ordering (TurboRepo-style):
 
 ```json
 {
