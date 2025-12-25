@@ -18,7 +18,7 @@
 `OpenTurbo` is a high-performance task runner designed for Bun. It brings TurboRepo-style parallel execution and dependency graph awareness to any project, with first-class support for Git worktrees and branch-conditional tasks.
 
 ---
-![OpenTurbo demo](src/doc/demo.gif)
+![OpenTurbo demo](doc/demo.gif)
 
 ## Features
 
