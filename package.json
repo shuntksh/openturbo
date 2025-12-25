@@ -14,8 +14,8 @@
 	"scripts": {
 		"build": "bun run build.ts",
 		"test": "bun run test",
-		"format": "biome format",
-		"lint": "biome lint"
+		"format": "biome format --write",
+		"lint": "biome lint --write"
 	},
 	"keywords": [],
 	"author": "Shun Takahashi<shuntksh@gmail.com>",

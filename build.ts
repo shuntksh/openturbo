@@ -1,4 +1,3 @@
-
 // Define the valid Bun targets to ensure type safety
 // Note: "bun-windows-arm64" is not currently supported by Bun for compilation.
 type BunTarget =
@@ -65,4 +64,3 @@ for (const target of supportedTargets) {
 }
 
 console.log("All builds complete!");
-
