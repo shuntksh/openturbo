@@ -1,0 +1,13 @@
+# Sensitive files
+.env.*
+!.env.example
+@.env.ts
+
+# Node/Bun
+node_modules
+dist
+
+# Miscellaneous
+.DS_Store
+*.log
+.cspellcache
