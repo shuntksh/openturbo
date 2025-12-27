@@ -3,7 +3,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type { Config, Step, Workflow } from "./types";
 
 /**
@@ -17,19 +17,37 @@ export async function loadConfig(
 	explicitPath: string | undefined,
 	gitRoot: string,
 ): Promise<Config> {
-	const candidates = explicitPath
-		? [explicitPath]
-		: [
-				join(gitRoot, "workflow.json"),
-				join(gitRoot, "workflow.jsonc"),
-				join(gitRoot, "workflows.json"),
-				join(gitRoot, "workflows.jsonc"),
-				join(gitRoot, ".config", "workflow.json"),
-				join(gitRoot, ".config", "workflow.jsonc"),
-				join(gitRoot, ".config", "workflows.json"),
-				join(gitRoot, ".config", "workflows.jsonc"),
-				join(gitRoot, "package.json"),
-			];
+	const candidates: string[] = [];
+
+	if (explicitPath) {
+		candidates.push(explicitPath);
+	} else {
+		let current = process.cwd();
+		while (true) {
+			candidates.push(
+				join(current, "workflow.json"),
+				join(current, "workflow.jsonc"),
+				join(current, "workflows.json"),
+				join(current, "workflows.jsonc"),
+				join(current, "package.json"),
+			);
+
+			if (current === gitRoot) {
+				// At git root, also check .config subfolder
+				candidates.push(
+					join(current, ".config", "workflow.json"),
+					join(current, ".config", "workflow.jsonc"),
+					join(current, ".config", "workflows.json"),
+					join(current, ".config", "workflows.jsonc"),
+				);
+				break;
+			}
+
+			const parent = dirname(current);
+			if (parent === current) break; // Reached filesystem root
+			current = parent;
+		}
+	}
 
 	for (const path of candidates) {
 		if (!existsSync(path)) continue;

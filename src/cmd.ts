@@ -71,7 +71,7 @@ async function main(): Promise<void> {
 	// Require job name
 	const jobName = jobArg ?? positionals[0];
 	if (!jobName) {
-		console.error(c("red", "Error: --job <name> is required"));
+		console.error(c("red", "Error: Job name is required (use --job <name> or positional argument)"));
 		console.error(c("dim", "Run with --help for usage information"));
 		process.exit(1);
 	}

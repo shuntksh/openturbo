@@ -11,10 +11,10 @@ export function handleHelp(config: Config | null, c: ColorFn): void {
 ${c("bold", "Job Runner")} - Generic workflow runner with Git worktree support
 
 ${c("dim", "USAGE:")}
-  bun run .config/scripts/runner.ts --job <name> [options]
+  bun run .config/scripts/runner.ts [job] [options]
 
 ${c("dim", "OPTIONS:")}
-  ${c("green", "-j, --job <name>")}   Job/workflow to run (required)
+  ${c("green", "-j, --job <name>")}   Job/workflow to run (optional if positional)
   ${c("green", "-c, --config <path>")} Path to config file
   ${c("green", "-v, --verbose")}      Show output for all steps
   ${c("green", "--fail-fast")}        Stop on first failure (default: true)
@@ -27,11 +27,13 @@ ${jobs.length > 0 ? jobs.map((j) => `  ${c("cyan", j)}`).join("\n") : "  (no con
 
 ${c("dim", "CONFIG DISCOVERY:")}
   1. --config <path> (explicit)
-  2. {git_root}/workflow.json or .jsonc
-  3. {git_root}/workflows.json or .jsonc
-  4. {git_root}/.config/workflow.json or .jsonc
-  5. {git_root}/.config/workflows.json or .jsonc
-  6. {git_root}/package.json → "workflows" field
+  2. Search from CWD up to git root:
+     a. workflow.json or .jsonc
+     b. workflows.json or .jsonc
+     c. package.json → "workflows" field
+  3. At git root:
+     a. .config/workflow.json or .jsonc
+     b. .config/workflows.json or .jsonc
 
 ${c("dim", "BRANCH FILTERING:")}
   branches: ["main"]         Only run on main
