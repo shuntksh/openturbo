@@ -1,6 +1,6 @@
 {
 	"name": "openturbo",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "TurboRepo-style task runner for Bun with Git worktree awareness",
 	"bin": {
 		"ot": "src/cmd.ts"
