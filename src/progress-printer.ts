@@ -227,7 +227,7 @@ export class ProgressPrinter {
 		for (let i = 0; i < maxLen; i++) {
 			process.stdout.write(ANSI.clearLine);
 			if (i < newLines.length) {
-				process.stdout.write(`${newLines[i]}\n`);
+				process.stdout.write(newLines[i] + "\n");
 			} else {
 				// Line was removed, just move down
 				process.stdout.write("\n");

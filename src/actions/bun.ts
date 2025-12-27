@@ -217,7 +217,7 @@ export async function runBunAction(
 			success: totalSuccess,
 			output: totalSuccess
 				? `${passed} packages passed`
-				: `${logs.join("\n")}\n\nCompleted: ${passed} passed, ${failed} failed`,
+				: logs.join("\n") + `\n\nCompleted: ${passed} passed, ${failed} failed`,
 		};
 	});
 }
