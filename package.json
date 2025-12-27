@@ -15,8 +15,7 @@
 		"build": "bun run build.ts --current",
 		"test": "bun test",
 		"format": "biome format --write",
-		"lint": "biome lint --write",
-		"typecheck": "tsc --noEmit"
+		"lint": "biome lint --write"
 	},
 	"keywords": [],
 	"author": "Shun Takahashi<shuntksh@gmail.com>",

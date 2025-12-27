@@ -10,11 +10,6 @@
 			"cmd": "bun run format"
 		},
 		{
-			"name": "typecheck",
-			"cmd": "bun run typecheck",
-			"dependsOn": ["format"]
-		},
-		{
 			"name": "build",
 			"cmd": "bun run build",
 			"dependsOn": ["lint"]

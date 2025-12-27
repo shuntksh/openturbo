@@ -1,0 +1,38 @@
+---
+title: Welcome to OpenTurbo
+description: TurboRepo-style task runner for Bun with first-class Git worktree support.
+template: splash
+hero:
+  tagline: TurboRepo-style task runner for Bun. Lightweight, zero-dependency, worktree-aware.
+  image:
+    html: <img src="/demo.gif" alt="OpenTurbo Demo" />
+  actions:
+    - text: Get Started
+      link: /guides/installation/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/shuntksh/openturbo
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why OpenTurbo?
+
+OpenTurbo is a high-performance task runner designed for Bun. It brings TurboRepo-style parallel execution and dependency graph awareness to any project, with first-class support for Git worktrees and branch-conditional tasks.
+
+<CardGrid stagger>
+	<Card title="Worktree Management" icon="laptop">
+		Full lifecycle management (add, remove, list) with support for post-creation hooks.
+	</Card>
+	<Card title="Branch-filtered steps" icon="random">
+		Run steps conditionally based on branch patterns with glob and negation support.
+	</Card>
+	<Card title="Workspace-aware" icon="rocket">
+		Parallel NPM script execution across npm/bun workspaces with dependency ordering.
+	</Card>
+	<Card title="Dependency Graph" icon="puzzle">
+		Define step dependencies for sequential or parallel execution.
+	</Card>
+</CardGrid>
