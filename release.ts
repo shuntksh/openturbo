@@ -23,7 +23,7 @@ async function main() {
 			major: { type: "boolean" },
 			minor: { type: "boolean" },
 			patch: { type: "boolean" },
-            help: { type: "boolean" },
+			help: { type: "boolean" },
 		},
 		allowPositionals: true,
 	});
@@ -47,7 +47,9 @@ async function main() {
 	if (!newVersion) {
 		const parts = currentVersion.split(".").map(Number);
 		if (parts.length !== 3 || parts.some(Number.isNaN)) {
-			console.error(`Error: Current version ${currentVersion} is not valid semver (x.y.z)`);
+			console.error(
+				`Error: Current version ${currentVersion} is not valid semver (x.y.z)`,
+			);
 			process.exit(1);
 		}
 
@@ -71,7 +73,9 @@ async function main() {
 	const order = Bun.semver.order(newVersion, currentVersion);
 	// order(a, b): 1 if a > b, -1 if a < b, 0 if equal
 	if (order <= 0) {
-		console.error(`Error: New version ${newVersion} must be greater than current version ${currentVersion}`);
+		console.error(
+			`Error: New version ${newVersion} must be greater than current version ${currentVersion}`,
+		);
 		process.exit(1);
 	}
 
@@ -103,7 +107,7 @@ async function main() {
 	// 7. Commit and Tag
 	console.log("Committing and Tagging...");
 	try {
-        // Build binary for release is NOT required since we are source-based now.
+		// Build binary for release is NOT required since we are source-based now.
 		await run(["git", "add", "package.json"]);
 		await run(["git", "commit", "-m", `chore: release ${tagName}`]);
 		await run(["git", "tag", tagName]);

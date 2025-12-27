@@ -1,0 +1,23 @@
+{
+	"all": [
+		{
+			"name": "lint",
+			"cmd": "bun run lint",
+			"dependsOn": ["format"]
+		},
+		{
+			"name": "format",
+			"cmd": "bun run format"
+		},
+		{
+			"name": "build",
+			"cmd": "bun run build",
+			"dependsOn": ["lint"]
+		},
+		{
+			"name": "test",
+			"cmd": "bun run test",
+			"dependsOn": ["lint"]
+		}
+	]
+}
