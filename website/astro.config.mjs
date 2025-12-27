@@ -20,8 +20,8 @@ export default defineConfig({
 				{
 					label: "Start Here",
 					items: [
-						{ label: "Installation", slug: "openturbo/guides/installation" },
-						{ label: "Usage", slug: "openturbo/guides/usage" },
+						{ label: "Installation", slug: "guides/installation" },
+						{ label: "Usage", slug: "guides/usage" },
 					],
 				},
 				{
@@ -29,17 +29,17 @@ export default defineConfig({
 					items: [
 						{
 							label: "Worktree Management",
-							slug: "openturbo/guides/worktree-management",
+							slug: "guides/worktree-management",
 						},
-						{ label: "Configuration", slug: "openturbo/guides/configuration" },
+						{ label: "Configuration", slug: "guides/configuration" },
 					],
 				},
 				{
 					label: "Reference",
 					items: [
-						{ label: "Step Types", slug: "openturbo/reference/step-types" },
-						{ label: "Branch Filtering", slug: "openturbo/reference/branch-filtering" },
-						{ label: "Features", slug: "openturbo/reference/features" },
+						{ label: "Step Types", slug: "reference/step-types" },
+						{ label: "Branch Filtering", slug: "reference/branch-filtering" },
+						{ label: "Features", slug: "reference/features" },
 					],
 				},
 			],
