@@ -2,8 +2,6 @@
 import { parseArgs } from "node:util";
 import { spawn } from "bun";
 
-// -- Utils --
-
 async function run(cmd: string[], cwd?: string): Promise<string> {
 	const proc = spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
 	const text = await new Response(proc.stdout).text();
@@ -15,8 +13,6 @@ async function run(cmd: string[], cwd?: string): Promise<string> {
 	}
 	return text.trim();
 }
-
-// -- Main --
 
 async function main() {
 	const args = parseArgs({
@@ -50,7 +46,7 @@ async function main() {
 
 	if (!newVersion) {
 		const parts = currentVersion.split(".").map(Number);
-		if (parts.length !== 3 || parts.some(isNaN)) {
+		if (parts.length !== 3 || parts.some(Number.isNaN)) {
 			console.error(`Error: Current version ${currentVersion} is not valid semver (x.y.z)`);
 			process.exit(1);
 		}
@@ -88,7 +84,7 @@ async function main() {
 		// If command succeeds, tag exists
 		console.error(`Error: Tag ${tagName} already exists locally.`);
 		process.exit(1);
-	} catch (e) {
+	} catch (_) {
 		// Command failed, meaning tag does not exist -> Good.
 	}
 
@@ -102,7 +98,7 @@ async function main() {
 
 	// 6. Update package.json
 	pkg.version = newVersion;
-	await Bun.write(pkgPath, JSON.stringify(pkg, null, "\t") + "\n");
+	await Bun.write(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
 
 	// 7. Commit and Tag
 	console.log("Committing and Tagging...");
@@ -117,8 +113,12 @@ async function main() {
 		await run(["git", "push", "--tags"]);
 
 		console.log(`\nSuccess! Released ${tagName}`);
-	} catch (error: any) {
-		console.error("Release failed:", error.message);
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			console.error("Release failed:", error.message);
+		} else {
+			console.error("Release failed:", error);
+		}
 		// Revert package.json change?? Maybe too complex for now. User can git checkout.
 		process.exit(1);
 	}

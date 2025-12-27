@@ -186,7 +186,7 @@ async function runStepsWithDeps(
 	const completed = new Set<string>();
 	const running = new Map<string, Promise<StepResult>>();
 
-	const canRun = (step: Step): boolean => {
+	const _canRun = (step: Step): boolean => {
 		for (const dep of step.dependsOn ?? []) {
 			if (!stepNames.has(dep)) continue;
 			const depState = states.get(dep);
@@ -215,7 +215,7 @@ async function runStepsWithDeps(
 
 			// Skip this step if any of its dependencies failed or were skipped.
 			if (
-				depStates.some((s) => s.status === "failed" || s.status === "skipped")
+				depStates.some((s) => s?.status === "failed" || s?.status === "skipped")
 			) {
 				state.status = "skipped";
 				printer?.updateStep(step.name, { status: "skipped" });
@@ -224,7 +224,7 @@ async function runStepsWithDeps(
 			}
 
 			// Wait if any dependencies are not yet done.
-			if (depStates.some((s) => s.status !== "done")) {
+			if (depStates.some((s) => s?.status !== "done")) {
 				continue;
 			}
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">OpenTurbo</h1>
+  <h1 align="center">OpenTurbo(WIP)</h1>
   <p align="center">
     <strong>TurboRepo-style task runner for Bun</strong>
     <br />
@@ -26,6 +26,14 @@
 - **Git worktree support**: Copy files between worktrees, branch-specific filtering for worktree contexts
 - **Workspace-aware execution**: Parallel NPM script execution across npm/bun workspaces with dependency ordering
 - **Dependency graph**: Define step dependencies with `dependsOn` for sequential or parallel execution
+
+## Installation
+
+Currently, you can install OpenTurbo from source using `bun add`:
+
+```sh
+bun add -D github:shuntksh/openturbo
+```
 
 ## Usage
 
