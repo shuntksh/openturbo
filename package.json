@@ -1,6 +1,6 @@
 {
 	"name": "openturbo",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "TurboRepo-style task runner for Bun with Git worktree awareness",
 	"bin": {
 		"openturbo": "src/cmd.ts"
@@ -12,8 +12,7 @@
 		"LICENSE"
 	],
 	"scripts": {
-		"build": "bun run build.ts",
-		"prepare": "bun run build.ts --current",
+		"build": "bun run build.ts --current",
 		"test": "bun run test",
 		"format": "biome format --write",
 		"lint": "biome lint --write"
