@@ -9,5 +9,12 @@
 	"files": {
 		"ignoreUnknown": true,
 		"includes": ["**/*"]
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
 	}
 }

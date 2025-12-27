@@ -12,12 +12,13 @@
  */
 
 import { parseArgs } from "node:util";
-import { handleGraph, handleHelp, handleRun, loadConfig } from "./handlers/mod";
-import { createColorizer, GitUtil, getSteps } from "./mod";
+import { handleGraph, handleHelp, handleRun, handleWt } from "./handlers/mod";
+import { createColorizer, GitUtil, getSteps, loadConfig } from "./mod";
 
 async function main(): Promise<void> {
 	const { positionals, values } = parseArgs({
 		allowPositionals: true,
+		strict: false,
 		args: Bun.argv.slice(2),
 		options: {
 			config: { short: "c", type: "string" },
@@ -30,6 +31,11 @@ async function main(): Promise<void> {
 		},
 	});
 
+	const configArg = values.config as string | undefined;
+	const jobArg = values.job as string | undefined;
+	const verboseArg = values.verbose as boolean | undefined;
+	const failFastArg = values["fail-fast"] as boolean | undefined;
+
 	const isTTY = process.stdout.isTTY ?? false;
 	const noColor = values["no-color"] ?? !isTTY;
 	const c = createColorizer(!noColor);
@@ -38,7 +44,7 @@ async function main(): Promise<void> {
 	if (values.help) {
 		try {
 			const gitRoot = await GitUtil.getGitRoot();
-			const config = await loadConfig(values.config, gitRoot);
+			const config = await loadConfig(configArg, gitRoot);
 			handleHelp(config, c);
 		} catch {
 			handleHelp(null, c);
@@ -46,8 +52,24 @@ async function main(): Promise<void> {
 		process.exit(0);
 	}
 
+	// Handle wt command
+	if (jobArg === "wt" || positionals[0] === "wt") {
+		const gitRoot = await GitUtil.getGitRoot();
+		const config = await loadConfig(configArg, gitRoot);
+
+		// Pass raw arguments after "wt" to preserve flags like -b
+		const rawArgs = Bun.argv.slice(2);
+		const wtIndex = rawArgs.indexOf("wt");
+		// If wt is not found in rawArgs (passed via --job=wt maybe?), fallback to positionals but that might launch flawed args
+		// But mostly it will be found.
+		const args = wtIndex !== -1 ? rawArgs.slice(wtIndex + 1) : [];
+
+		await handleWt(args, config, c);
+		process.exit(0);
+	}
+
 	// Require job name
-	const jobName = values.job ?? positionals[0];
+	const jobName = jobArg ?? positionals[0];
 	if (!jobName) {
 		console.error(c("red", "Error: --job <name> is required"));
 		console.error(c("dim", "Run with --help for usage information"));
@@ -57,7 +79,7 @@ async function main(): Promise<void> {
 	// Handle --graph
 	if (values.graph) {
 		const gitRoot = await GitUtil.getGitRoot();
-		const config = await loadConfig(values.config, gitRoot);
+		const config = await loadConfig(configArg, gitRoot);
 		const workflow = config.workflows[jobName];
 
 		if (!workflow) {
@@ -81,9 +103,9 @@ async function main(): Promise<void> {
 	// Default: run the job
 	const exitCode = await handleRun({
 		jobName,
-		configPath: values.config,
-		verbose: values.verbose ?? false,
-		failFast: values["fail-fast"] ?? true,
+		configPath: configArg,
+		verbose: verboseArg ?? false,
+		failFast: failFastArg ?? true,
 		isTTY,
 		c,
 	});

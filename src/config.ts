@@ -2,7 +2,74 @@
  * Configuration parsing utilities.
  */
 
-import type { Step, Workflow } from "./types";
+import { existsSync } from "node:fs";
+import { basename, join } from "node:path";
+import type { Config, Step, Workflow } from "./types";
+
+/**
+ * Loads configuration from potential config files.
+ *
+ * @param explicitPath - Explicit path to config file provided by user
+ * @param gitRoot - Root of the git repository
+ * @returns Parsed configuration
+ */
+export async function loadConfig(
+	explicitPath: string | undefined,
+	gitRoot: string,
+): Promise<Config> {
+	const candidates = explicitPath
+		? [explicitPath]
+		: [
+				join(gitRoot, "workflow.json"),
+				join(gitRoot, "workflow.jsonc"),
+				join(gitRoot, "workflows.json"),
+				join(gitRoot, "workflows.jsonc"),
+				join(gitRoot, ".config", "workflow.json"),
+				join(gitRoot, ".config", "workflow.jsonc"),
+				join(gitRoot, ".config", "workflows.json"),
+				join(gitRoot, ".config", "workflows.jsonc"),
+				join(gitRoot, "package.json"),
+			];
+
+	for (const path of candidates) {
+		if (!existsSync(path)) continue;
+
+		const content = await Bun.file(path).text();
+		const isJsonc = path.endsWith(".jsonc");
+		const isPackageJson = basename(path) === "package.json";
+
+		try {
+			const parsed = JSON.parse(isJsonc ? stripJsonComments(content) : content);
+
+			if (isPackageJson) {
+				if (parsed.workflows) {
+					// package.json only supports workflows, no top-level worktree config currently
+					// strictly following the requirement that workflows.json captures wtp.yaml
+					return { workflows: parsed.workflows };
+				}
+				continue; // Try next candidate if no workflows field
+			}
+
+			// Standalone config file
+			if (parsed.workflows || parsed.worktree) {
+				return {
+					workflows: parsed.workflows || {},
+					worktree: parsed.worktree,
+				};
+			}
+
+			// Direct workflow definitions (legacy format)
+			return { workflows: parsed };
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			throw new Error(`Failed to parse ${path}: ${message}`);
+		}
+	}
+
+	throw new Error(
+		`No workflow config found. Checked:\n${candidates.map((c) => `  - ${c}`).join("\n")}`,
+	);
+}
 
 /**
  * Strips single-line and multi-line comments from JSONC content.

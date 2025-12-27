@@ -2,24 +2,39 @@ import { resolve } from "node:path";
 import { $ } from "bun";
 import type { WorktreeInfo } from "./types";
 
-async function getGitRoot(): Promise<string> {
-	const result = await $`git rev-parse --show-toplevel`.quiet().nothrow();
+type GitOptions = {
+	readonly cwd?: string;
+};
+
+async function getGitRoot(options: GitOptions = {}): Promise<string> {
+	const $cmd = options.cwd
+		? $`git rev-parse --show-toplevel`.cwd(options.cwd)
+		: $`git rev-parse --show-toplevel`;
+	const result = await $cmd.quiet().nothrow();
 	if (result.exitCode !== 0) {
 		throw new Error("Not in a git repository");
 	}
 	return result.text().trim();
 }
 
-async function getCurrentBranch(): Promise<string> {
-	const result = await $`git branch --show-current`.quiet().nothrow();
+async function getCurrentBranch(options: GitOptions = {}): Promise<string> {
+	const $cmd = options.cwd
+		? $`git branch --show-current`.cwd(options.cwd)
+		: $`git branch --show-current`;
+	const result = await $cmd.quiet().nothrow();
 	if (result.exitCode !== 0) {
 		throw new Error("Failed to get current branch");
 	}
 	return result.text().trim();
 }
 
-async function getWorktrees(): Promise<readonly WorktreeInfo[]> {
-	const result = await $`git worktree list --porcelain`.quiet().nothrow();
+async function getWorktrees(
+	options: GitOptions = {},
+): Promise<readonly WorktreeInfo[]> {
+	const $cmd = options.cwd
+		? $`git worktree list --porcelain`.cwd(options.cwd)
+		: $`git worktree list --porcelain`;
+	const result = await $cmd.quiet().nothrow();
 	if (result.exitCode !== 0) {
 		return [];
 	}
@@ -58,8 +73,11 @@ async function getWorktrees(): Promise<readonly WorktreeInfo[]> {
 	return worktrees;
 }
 
-async function isInWorktree(gitRoot: string): Promise<boolean> {
-	const worktrees = await getWorktrees();
+async function isInWorktree(
+	gitRoot: string,
+	options: GitOptions = {},
+): Promise<boolean> {
+	const worktrees = await getWorktrees(options);
 	const mainWorktree = worktrees.find((w) => w.isMain);
 	return mainWorktree ? resolve(gitRoot) !== resolve(mainWorktree.path) : false;
 }

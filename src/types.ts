@@ -42,10 +42,38 @@ export type Step = {
 export type Workflow = readonly Step[] | { readonly steps: readonly Step[] };
 
 /**
+ * Worktree hook configuration.
+ */
+export type WorktreeHook =
+	| {
+			readonly type: "copy";
+			readonly from: string;
+			readonly to: string;
+	  }
+	| {
+			readonly type: "command";
+			readonly command: string;
+	  };
+
+/**
+ * Worktree management configuration.
+ */
+export type WorktreeConfig = {
+	readonly defaults?: {
+		/** Base directory for worktrees (relative to git root), default: ../worktrees */
+		readonly base_dir?: string;
+	};
+	readonly hooks?: {
+		readonly post_create?: readonly WorktreeHook[];
+	};
+};
+
+/**
  * Runner configuration containing workflow definitions.
  */
 export type Config = {
 	readonly workflows: Record<string, Workflow>;
+	readonly worktree?: WorktreeConfig;
 };
 
 /**

@@ -5,3 +5,4 @@
 export * from "./graph";
 export * from "./help";
 export * from "./run";
+export * from "./wt";

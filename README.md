@@ -11,6 +11,7 @@
   <a href="#features">Features</a> •
   <a href="#usage">Usage</a> •
   <a href="#configuration">Configuration</a> •
+  <a href="#worktree-management">Worktree Management</a> •
   <a href="#step-types">Step Types</a> •
   <a href="#branch-filtering">Branch Filtering</a>
 </p>
@@ -22,6 +23,7 @@
 
 ## Features
 
+- **Worktree Management**: Full lifecycle management (add, remove, list) with support for post-creation hooks
 - **Branch-filtered steps**: Run steps conditionally based on branch patterns with glob and negation support
 - **Git worktree support**: Copy files between worktrees, branch-specific filtering for worktree contexts
 - **Workspace-aware execution**: Parallel NPM script execution across npm/bun workspaces with dependency ordering
@@ -38,7 +40,7 @@ bun add -D github:shuntksh/openturbo
 ## Usage
 
 ```sh
-bun run src/cmd.ts <job-name> [options]
+ot <job-name> [options]
 ```
 
 ### Options
@@ -52,6 +54,19 @@ bun run src/cmd.ts <job-name> [options]
 | `-v, --verbose` | Show command output |
 | `--no-color` | Disable colored output |
 | `-h, --help` | Show help |
+
+### Worktree Management
+
+```sh
+ot wt <command> [options]
+```
+
+| Command | Description |
+|---------|-------------|
+| `add` | Create a new worktree (and optionally a new branch) |
+| `remove` | Remove a worktree (and optionally delete its branch) |
+| `list` | List managed worktrees |
+
 
 ## Configuration
 
@@ -101,6 +116,66 @@ Config is discovered from (in order):
   }
 }
 ```
+
+### Worktree Configuration
+
+Configure worktree defaults and hooks in the `worktree` section of your config:
+
+```jsonc
+{
+  "worktree": {
+    "defaults": {
+      "base_dir": "../worktrees" // Relative to git root
+    },
+    "hooks": {
+      "post_create": [
+        {
+          "type": "copy",
+          "from": ".env",
+          "to": ".env"
+        },
+        {
+          "type": "command",
+          "command": "bun install"
+        }
+      ]
+    }
+  }
+}
+```
+
+## Worktree Management
+
+OpenTurbo replaces `git worktree` boilerplate with a streamlined CLI that handles directory management and setup hooks.
+
+### Commands
+
+**List worktrees**
+```bash
+ot wt list
+```
+
+**Add a worktree**
+```bash
+# Add worktree for existing branch
+ot wt add feature/login
+
+# Create new branch and worktree
+ot wt add -b feature/new-ui
+
+# Add with custom base
+ot wt add -b fix/bug --base v1.2.0
+```
+
+**Remove a worktree**
+```bash
+# Remove worktree directory only
+ot wt remove feature/login
+
+# Remove worktree and delete the branch
+ot wt remove --with-branch feature/login
+```
+
 
 ## Step Types
 

@@ -2,83 +2,20 @@
  * Run handler - executes workflow steps with dependency resolution.
  */
 
-import { existsSync } from "node:fs";
-import { basename, join } from "node:path";
-
-import type {
-	ColorFn,
-	Config,
-	RunContext,
-	Step,
-	StepResult,
-	StepState,
-} from "../mod";
+import type { ColorFn, RunContext, Step, StepResult, StepState } from "../mod";
 
 import {
 	createProgressPrinter,
 	formatDuration,
 	GitUtil,
 	getSteps,
+	loadConfig,
 	resolveStepsWithDeps,
 	runBunAction,
 	runCmdAction,
 	runWorktreeCpAction,
 	shouldRunOnBranch,
-	stripJsonComments,
 } from "../mod";
-
-export async function loadConfig(
-	explicitPath: string | undefined,
-	gitRoot: string,
-): Promise<Config> {
-	const candidates = explicitPath
-		? [explicitPath]
-		: [
-				join(gitRoot, "workflow.json"),
-				join(gitRoot, "workflow.jsonc"),
-				join(gitRoot, "workflows.json"),
-				join(gitRoot, "workflows.jsonc"),
-				join(gitRoot, ".config", "workflow.json"),
-				join(gitRoot, ".config", "workflow.jsonc"),
-				join(gitRoot, ".config", "workflows.json"),
-				join(gitRoot, ".config", "workflows.jsonc"),
-				join(gitRoot, "package.json"),
-			];
-
-	for (const path of candidates) {
-		if (!existsSync(path)) continue;
-
-		const content = await Bun.file(path).text();
-		const isJsonc = path.endsWith(".jsonc");
-		const isPackageJson = basename(path) === "package.json";
-
-		try {
-			const parsed = JSON.parse(isJsonc ? stripJsonComments(content) : content);
-
-			if (isPackageJson) {
-				if (parsed.workflows) {
-					return { workflows: parsed.workflows };
-				}
-				continue; // Try next candidate if no workflows field
-			}
-
-			// Standalone config file
-			if (parsed.workflows) {
-				return { workflows: parsed.workflows };
-			}
-
-			// Direct workflow definitions (legacy format)
-			return { workflows: parsed };
-		} catch (e) {
-			const message = e instanceof Error ? e.message : String(e);
-			throw new Error(`Failed to parse ${path}: ${message}`);
-		}
-	}
-
-	throw new Error(
-		`No workflow config found. Checked:\n${candidates.map((c) => `  - ${c}`).join("\n")}`,
-	);
-}
 
 async function runStep(step: Step, ctx: RunContext): Promise<StepResult> {
 	if (step.cmd) {
