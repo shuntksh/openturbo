@@ -1,0 +1,11 @@
+{
+	"name": "@complex/constants",
+	"version": "0.0.1",
+	"main": "./src/index.ts",
+	"scripts": {
+		"build": "bun run build.ts",
+		"test": "bun run test.ts",
+		"lint": "biome check .",
+		"typecheck": "tsc --noEmit"
+	}
+}

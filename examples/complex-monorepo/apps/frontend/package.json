@@ -1,0 +1,16 @@
+{
+	"name": "@complex/frontend",
+	"version": "0.0.1",
+	"scripts": {
+		"build": "bun run build.ts",
+		"test": "bun run test.ts",
+		"lint": "biome check .",
+		"typecheck": "tsc --noEmit",
+		"start": "bun run src/index.ts"
+	},
+	"dependencies": {
+		"@complex/utils": "workspace:*",
+		"@complex/types": "workspace:*",
+		"@complex/ui-lib": "workspace:*"
+	}
+}

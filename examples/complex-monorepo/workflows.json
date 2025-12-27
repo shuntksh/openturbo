@@ -1,0 +1,60 @@
+{
+  "ci": [
+    {
+      "name": "install",
+      "cmd": "bun install",
+      "description": "Install dependencies"
+    },
+    {
+      "name": "lint",
+      "bun": {
+        "script": "lint"
+      },
+      "dependsOn": ["install"],
+      "description": "Lint all packages"
+    },
+    {
+      "name": "typecheck",
+      "bun": {
+        "script": "typecheck",
+        "dependsOn": ["^typecheck"]
+      },
+      "dependsOn": ["install"],
+      "description": "Typecheck with topological order"
+    },
+    {
+      "name": "build",
+      "bun": {
+        "script": "build",
+        "dependsOn": ["^build"]
+      },
+      "dependsOn": ["lint", "typecheck"],
+      "description": "Build with topological dependencies"
+    },
+    {
+      "name": "test",
+      "bun": {
+        "script": "test",
+        "dependsOn": ["build"]
+      },
+      "dependsOn": ["build"],
+      "description": "Run tests after build"
+    }
+  ],
+  "release": [
+    {
+      "name": "build-release",
+      "bun": {
+        "script": "build",
+        "dependsOn": ["^build"]
+      },
+      "description": "Build artifacts for release"
+    },
+    {
+      "name": "publish",
+      "cmd": "echo 'Simulating publish...'",
+      "dependsOn": ["build-release"],
+      "description": "Publish packages"
+    }
+  ]
+}

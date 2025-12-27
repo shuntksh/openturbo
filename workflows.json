@@ -2,26 +2,26 @@
 	"all": [
 		{
 			"name": "lint",
-			"bun": "lint",
+			"cmd": "bun run lint",
 			"dependsOn": ["format"]
 		},
 		{
 			"name": "format",
-			"bun": "format"
+			"cmd": "bun run format"
 		},
 		{
 			"name": "typecheck",
-			"bun": "typecheck",
+			"cmd": "bun run typecheck",
 			"dependsOn": ["format"]
 		},
 		{
 			"name": "build",
-			"bun": "build",
+			"cmd": "bun run build",
 			"dependsOn": ["lint"]
 		},
 		{
 			"name": "test",
-			"bun": "test",
+			"cmd": "bun run test",
 			"dependsOn": ["lint"]
 		}
 	]
