@@ -47,3 +47,22 @@ export function formatStepLine(state: StepState, c: ColorFn): string {
 
 	return `  ${icon} ${state.step.name.padEnd(16)} ${statusText}${duration}`;
 }
+
+/**
+ * Formats a Zod validation error into a human-friendly string.
+ *
+ * @param error - The Zod error
+ * @param prefix - Prefix for the error message
+ * @returns Formatted error string
+ */
+export function formatZodError(
+	error: import("zod").ZodError,
+	prefix = "Invalid configuration",
+): string {
+	const issues = error.issues.map((issue) => {
+		const path = issue.path.join(".");
+		const pathText = path ? `At "${path}": ` : "";
+		return `  - ${pathText}${issue.message}`;
+	});
+	return `${prefix}:\n${issues.join("\n")}`;
+}

@@ -96,7 +96,7 @@ describe("WorktreeManager", () => {
 				hooks: {
 					post_create: [
 						{ type: "copy", from: ".env.example", to: ".env" },
-						{ type: "command", command: "echo 'hook ran' > hooks_ran.txt" },
+						{ cmd: "echo 'hook ran' > hooks_ran.txt" },
 					],
 				},
 			},

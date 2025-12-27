@@ -4,7 +4,10 @@
 
 import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { ZodError } from "zod";
+import { formatZodError } from "./formatting";
 import type { Config, Step, Workflow } from "./types";
+import { ConfigSchema } from "./types";
 
 /**
  * Loads configuration from potential config files.
@@ -63,21 +66,53 @@ export async function loadConfig(
 				if (parsed.workflows) {
 					// package.json only supports workflows, no top-level worktree config currently
 					// strictly following the requirement that workflows.json captures wtp.yaml
-					return { workflows: parsed.workflows };
+					// strictly following the requirement that workflows.json captures wtp.yaml
+					const config = { workflows: parsed.workflows };
+					try {
+						return ConfigSchema.parse(config);
+					} catch (e) {
+						if (e instanceof ZodError) {
+							throw new Error(
+								formatZodError(e, `Invalid config in ${basename(path)}`),
+							);
+						}
+						throw e;
+					}
 				}
 				continue; // Try next candidate if no workflows field
 			}
 
 			// Standalone config file
 			if (parsed.workflows || parsed.worktree) {
-				return {
+				const config = {
 					workflows: parsed.workflows || {},
 					worktree: parsed.worktree,
 				};
+				// Validate against schema
+				try {
+					return ConfigSchema.parse(config);
+				} catch (e) {
+					if (e instanceof ZodError) {
+						throw new Error(
+							formatZodError(e, `Invalid config in ${basename(path)}`),
+						);
+					}
+					throw e;
+				}
 			}
 
 			// Direct workflow definitions (legacy format)
-			return { workflows: parsed };
+			const config = { workflows: parsed };
+			try {
+				return ConfigSchema.parse(config);
+			} catch (e) {
+				if (e instanceof ZodError) {
+					throw new Error(
+						formatZodError(e, `Invalid config in ${basename(path)}`),
+					);
+				}
+				throw e;
+			}
 		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
 			throw new Error(`Failed to parse ${path}: ${message}`);

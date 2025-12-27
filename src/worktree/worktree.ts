@@ -146,9 +146,9 @@ export class WorktreeManager {
 		console.log("Running post-create hooks...");
 		for (const hook of hooks) {
 			try {
-				if (hook.type === "copy") {
+				if ("type" in hook && hook.type === "copy") {
 					await this.runCopyHook(hook, worktreePath);
-				} else if (hook.type === "command") {
+				} else if ("cmd" in hook) {
 					await this.runCommandHook(hook, worktreePath);
 				}
 			} catch (e) {
@@ -169,13 +169,13 @@ export class WorktreeManager {
 	}
 
 	private async runCommandHook(
-		hook: Extract<WorktreeHook, { type: "command" }>,
+		hook: { cmd: string },
 		worktreePath: string,
 	): Promise<void> {
-		console.log(`  Running: ${hook.command}`);
+		console.log(`  Running: ${hook.cmd}`);
 		// Run command inside the new worktree
 		// Note: worktreePath is absolute
 		// Use sh -c to support shell operators like redirects
-		await $`sh -c ${hook.command}`.cwd(worktreePath);
+		await $`sh -c ${hook.cmd}`.cwd(worktreePath);
 	}
 }

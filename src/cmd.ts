@@ -12,8 +12,15 @@
  */
 
 import { parseArgs } from "node:util";
+import { z } from "zod";
 import { handleGraph, handleHelp, handleRun, handleWt } from "./handlers/mod";
-import { createColorizer, GitUtil, getSteps, loadConfig } from "./mod";
+import {
+	ConfigSchema,
+	createColorizer,
+	GitUtil,
+	getSteps,
+	loadConfig,
+} from "./mod";
 
 async function main(): Promise<void> {
 	const { positionals, values } = parseArgs({
@@ -68,10 +75,22 @@ async function main(): Promise<void> {
 		process.exit(0);
 	}
 
+	// Handle schema command
+	if (positionals[0] === "schema") {
+		const jsonSchema = z.toJSONSchema(ConfigSchema);
+		console.log(JSON.stringify(jsonSchema, null, 2));
+		process.exit(0);
+	}
+
 	// Require job name
 	const jobName = jobArg ?? positionals[0];
 	if (!jobName) {
-		console.error(c("red", "Error: Job name is required (use --job <name> or positional argument)"));
+		console.error(
+			c(
+				"red",
+				"Error: Job name is required (use --job <name> or positional argument)",
+			),
+		);
 		console.error(c("dim", "Run with --help for usage information"));
 		process.exit(1);
 	}

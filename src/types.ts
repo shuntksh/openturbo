@@ -1,79 +1,42 @@
-/**
- * Shared type definitions for the job runner.
- */
+// Re-export config types inferred from Zod schema
+import {
+	ConfigSchema,
+	WorkflowSchema,
+	StepSchema,
+	BunActionSchema,
+	WorktreeCpActionSchema,
+	WorktreeHookSchema,
+	WorktreeConfigSchema,
+} from "./schema";
 
-/**
- * Worktree copy action configuration.
- */
-export type WorktreeCpAction = {
-	readonly from: string;
-	readonly files: readonly string[];
-	readonly allowMissing?: boolean;
+import type {
+	Config,
+	Workflow,
+	Step,
+	BunAction,
+	WorktreeCpAction,
+	WorktreeHook,
+	WorktreeConfig,
+} from "./schema";
+
+export {
+	ConfigSchema,
+	WorkflowSchema,
+	StepSchema,
+	BunActionSchema,
+	WorktreeCpActionSchema,
+	WorktreeHookSchema,
+	WorktreeConfigSchema,
 };
 
-/**
- * Bun action configuration for workspace-aware script execution.
- */
-export type BunAction = {
-	/** Script name to run (matches package.json scripts) */
-	readonly script: string;
-	/** Timeout in milliseconds (default: no timeout) */
-	readonly timeout?: number;
-	/** Turborepo-style dependencies: ^task, task, package#task */
-	readonly dependsOn?: readonly string[];
-};
-
-/**
- * A single step in a workflow.
- */
-export type Step = {
-	readonly name: string;
-	readonly description?: string;
-	readonly dependsOn?: readonly string[];
-	readonly branches?: readonly string[];
-	readonly cmd?: string;
-	readonly "worktree:cp"?: WorktreeCpAction;
-	readonly bun?: BunAction;
-};
-
-/**
- * A workflow can be an array of steps or an object with a steps property.
- */
-export type Workflow = readonly Step[] | { readonly steps: readonly Step[] };
-
-/**
- * Worktree hook configuration.
- */
-export type WorktreeHook =
-	| {
-			readonly type: "copy";
-			readonly from: string;
-			readonly to: string;
-	  }
-	| {
-			readonly type: "command";
-			readonly command: string;
-	  };
-
-/**
- * Worktree management configuration.
- */
-export type WorktreeConfig = {
-	readonly defaults?: {
-		/** Base directory for worktrees (relative to git root), default: ../worktrees */
-		readonly base_dir?: string;
-	};
-	readonly hooks?: {
-		readonly post_create?: readonly WorktreeHook[];
-	};
-};
-
-/**
- * Runner configuration containing workflow definitions.
- */
-export type Config = {
-	readonly workflows: Record<string, Workflow>;
-	readonly worktree?: WorktreeConfig;
+export type {
+	Config,
+	Workflow,
+	Step,
+	BunAction,
+	WorktreeCpAction,
+	WorktreeHook,
+	WorktreeConfig,
 };
 
 /**

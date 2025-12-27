@@ -74,7 +74,7 @@ describe("stripJsonComments", () => {
 
 describe("getSteps", () => {
 	test("returns steps from array workflow", () => {
-		const steps: readonly Step[] = [
+		const steps: Step[] = [
 			{ name: "step1", cmd: "echo 1" },
 			{ name: "step2", cmd: "echo 2" },
 		];
@@ -84,7 +84,7 @@ describe("getSteps", () => {
 	});
 
 	test("returns steps from object workflow", () => {
-		const steps: readonly Step[] = [
+		const steps: Step[] = [
 			{ name: "step1", cmd: "echo 1" },
 			{ name: "step2", cmd: "echo 2" },
 		];
