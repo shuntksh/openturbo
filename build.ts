@@ -24,6 +24,22 @@ const supportedTargets: BunTarget[] = [
 	"bun-windows-x64",
 ];
 
+// Check if --current flag is passed
+if (process.argv.includes("--current")) {
+	const current = `bun-${platform}-${arch}` as BunTarget;
+	if (supportedTargets.includes(current)) {
+		console.log(`Building only for current target: ${current}`);
+		supportedTargets.length = 0; // Clear array
+		supportedTargets.push(current);
+	} else if (platform === "windows" && arch === "arm64") {
+		// Windows ARM64 fallback to x64 if needed, or error.
+		// For now, let's just warn and maybe fallback to x64 if that's the intent,
+		// but simplistic approach:
+		console.error("Current target not supported for compilation.");
+		process.exit(1);
+	}
+}
+
 // Verify the current platform is supported (optional but good sanity check)
 const currentTarget = `bun-${platform}-${arch}`;
 if (
