@@ -35,3 +35,18 @@ ot wt remove feature/login
 # Remove worktree and delete the branch
 ot wt remove --with-branch feature/login
 ```
+
+### Copy files between worktrees
+
+```bash
+# Copy from main to current worktree
+ot wt cp main@.env .env
+
+# Copy to main from current worktree
+ot wt cp .env main@.env
+
+# Copy with glob patterns (preserves directory structure)
+ot wt cp main@./packages/**/dist .
+```
+
+Path spec format: `[branch]@<path>`. If no branch is specified, the current worktree is used.

@@ -147,4 +147,113 @@ describe("WorktreeManager", () => {
 		await manager.remove("unmanaged-test", { force: true });
 		expect(existsSync(unmanagedPath)).toBe(false);
 	});
+
+	test("copy file from worktree to main", async () => {
+		const config: Config = {
+			workflows: {},
+			worktree: {
+				defaults: {
+					base_dir: "wts",
+				},
+			},
+		};
+
+		const manager = new WorktreeManager(gitRoot, config);
+
+		// Create worktree and file in it
+		await manager.add("copy-source", { newBranch: true });
+		const worktreePath = join(gitRoot, "wts", "copy-source");
+		await $`echo "test content" > test-file.txt`.cwd(worktreePath);
+
+		// Copy from worktree to main
+		await manager.copy("copy-source@test-file.txt", "copied-file.txt", gitRoot);
+
+		expect(existsSync(join(gitRoot, "copied-file.txt"))).toBe(true);
+		expect(readFileSync(join(gitRoot, "copied-file.txt"), "utf-8").trim()).toBe(
+			"test content",
+		);
+
+		// Cleanup
+		await manager.remove("copy-source", { force: true });
+	});
+
+	test("copy file from main to worktree", async () => {
+		const config: Config = {
+			workflows: {},
+			worktree: {
+				defaults: {
+					base_dir: "wts",
+				},
+			},
+		};
+
+		const manager = new WorktreeManager(gitRoot, config);
+
+		// Create file in main
+		await $`echo "main content" > main-file.txt`.cwd(gitRoot);
+
+		// Create worktree
+		await manager.add("copy-dest", { newBranch: true });
+		const worktreePath = join(gitRoot, "wts", "copy-dest");
+
+		// Copy from main to worktree
+		await manager.copy("main-file.txt", "copy-dest@main-file.txt", gitRoot);
+
+		expect(existsSync(join(worktreePath, "main-file.txt"))).toBe(true);
+		expect(
+			readFileSync(join(worktreePath, "main-file.txt"), "utf-8").trim(),
+		).toBe("main content");
+
+		// Cleanup
+		await manager.remove("copy-dest", { force: true });
+	});
+
+	test("copy prevents path traversal", async () => {
+		const config: Config = { workflows: {} };
+		const manager = new WorktreeManager(gitRoot, config);
+
+		// Attempt path traversal
+		await expect(
+			manager.copy("../../../etc/passwd", "passwd", gitRoot),
+		).rejects.toThrow(/Path traversal detected/);
+	});
+
+	test("copy with glob pattern", async () => {
+		const config: Config = {
+			workflows: {},
+			worktree: {
+				defaults: {
+					base_dir: "wts",
+				},
+			},
+		};
+
+		const manager = new WorktreeManager(gitRoot, config);
+
+		// Create worktree with multiple files
+		await manager.add("glob-source", { newBranch: true });
+		const worktreePath = join(gitRoot, "wts", "glob-source");
+		mkdirSync(join(worktreePath, "packages", "a"), { recursive: true });
+		mkdirSync(join(worktreePath, "packages", "b"), { recursive: true });
+		await $`echo "a content" > packages/a/file.txt`.cwd(worktreePath);
+		await $`echo "b content" > packages/b/file.txt`.cwd(worktreePath);
+
+		// Copy using glob
+		mkdirSync(join(gitRoot, "dest-packages"), { recursive: true });
+		await manager.copy(
+			"glob-source@packages/**/file.txt",
+			"dest-packages",
+			gitRoot,
+		);
+
+		expect(
+			existsSync(join(gitRoot, "dest-packages", "packages", "a", "file.txt")),
+		).toBe(true);
+		expect(
+			existsSync(join(gitRoot, "dest-packages", "packages", "b", "file.txt")),
+		).toBe(true);
+
+		// Cleanup
+		await manager.remove("glob-source", { force: true });
+	});
 });

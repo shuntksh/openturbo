@@ -1,7 +1,8 @@
 import { parseArgs } from "node:util";
-import { GitUtil } from "../git-util";
-import { WorktreeManager } from "../worktree";
-import type { Config, ColorFn } from "../types";
+
+import { GitUtil } from "#src/git-util";
+import { WorktreeManager } from "#src/git/index";
+import type { Config, ColorFn } from "#src/types";
 
 export async function handleWt(
 	args: string[],
@@ -26,9 +27,15 @@ export async function handleWt(
 		case "remove":
 			await handleRemove(manager, restArgs, c);
 			break;
+		case "cp":
+		case "copy":
+			await handleCopy(manager, restArgs, c);
+			break;
 		default:
 			console.error(c("red", `Unknown subcommand: ${subcommand}`));
-			console.error(c("dim", "Available: add, remove (rm), list (ls)"));
+			console.error(
+				c("dim", "Available: add, remove (rm), list (ls), copy (cp)"),
+			);
 			process.exit(1);
 	}
 }
@@ -122,6 +129,34 @@ async function handleRemove(
 			deleteBranch: values["with-branch"],
 		});
 		console.log(c("green", `Worktree removed for ${branch}`));
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		console.error(c("red", `Error: ${message}`));
+		process.exit(1);
+	}
+}
+
+async function handleCopy(
+	manager: WorktreeManager,
+	args: string[],
+	c: ColorFn,
+): Promise<void> {
+	const src = args[0];
+	const dest = args[1];
+
+	if (!src || !dest) {
+		console.error(c("red", "Error: Source and destination are required"));
+		console.error(c("dim", "Usage: ot wt cp <source> <dest>"));
+		console.error(c("dim", "  Format: [branch]@<path>"));
+		console.error(c("dim", "  Examples:"));
+		console.error(c("dim", "    ot wt cp main@.env .env"));
+		console.error(c("dim", "    ot wt cp .env main@.env"));
+		console.error(c("dim", "    ot wt cp main@./packages/**/dist ."));
+		process.exit(1);
+	}
+
+	try {
+		await manager.copy(src, dest, process.cwd());
 	} catch (e) {
 		const message = e instanceof Error ? e.message : String(e);
 		console.error(c("red", `Error: ${message}`));

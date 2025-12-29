@@ -66,6 +66,7 @@ ot wt <command> [options]
 | `add` | Create a new worktree (and optionally a new branch) |
 | `remove` | Remove a worktree (and optionally delete its branch) |
 | `list` | List managed worktrees |
+| `cp` | Copy files between worktrees |
 
 
 ## Configuration
@@ -174,6 +175,18 @@ ot wt remove feature/login
 
 # Remove worktree and delete the branch
 ot wt remove --with-branch feature/login
+```
+
+**Copy files between worktrees**
+```bash
+# Copy from main to current worktree
+ot wt cp main@.env .env
+
+# Copy to main from current worktree
+ot wt cp .env main@.env
+
+# Copy with glob patterns (preserves directory structure)
+ot wt cp main@./packages/**/dist .
 ```
 
 
