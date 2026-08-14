@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { $ } from "bun";
 import { GitUtil } from "../mod";
 import type { Config, WorktreeHook } from "../types";
+import { buildShellCommand, resolveShell, shellScriptHint } from "../shell";
 
 /**
  * Worktree manager for creating and managing git worktrees.
@@ -165,7 +166,8 @@ export class WorktreeManager {
 		const dest = resolve(worktreePath, hook.to);
 
 		console.log(`  Copying ${hook.from} -> ${hook.to}`);
-		await $`cp -r ${src} ${dest}`.cwd(this.gitRoot);
+		mkdirSync(dirname(dest), { recursive: true });
+		cpSync(src, dest, { recursive: true });
 	}
 
 	private async runCommandHook(
@@ -175,8 +177,23 @@ export class WorktreeManager {
 		console.log(`  Running: ${hook.cmd}`);
 		// Run command inside the new worktree
 		// Note: worktreePath is absolute
-		// Use sh -c to support shell operators like redirects
-		await $`sh -c ${hook.cmd}`.cwd(worktreePath);
+		const shell = resolveShell();
+		const proc = Bun.spawn(buildShellCommand(shell, hook.cmd), {
+			cwd: worktreePath,
+			stderr: "pipe",
+			stdout: "pipe",
+			windowsVerbatimArguments: shell.kind === "cmd",
+		});
+		const [exitCode, stdout, stderr] = await Promise.all([
+			proc.exited,
+			new Response(proc.stdout).text(),
+			new Response(proc.stderr).text(),
+		]);
+		if (exitCode !== 0) {
+			throw new Error(
+				`Command hook failed with exit code ${exitCode}: ${stderr || stdout}${shellScriptHint(hook.cmd, shell)}`,
+			);
+		}
 	}
 
 	/**
@@ -208,16 +225,17 @@ export class WorktreeManager {
 	): string {
 		// Compute the relative directory from gitRoot to cwd
 		let relativeDir = "";
-		if (cwd.startsWith(this.gitRoot)) {
-			relativeDir = cwd.slice(this.gitRoot.length);
-			if (relativeDir.startsWith("/")) relativeDir = relativeDir.slice(1);
+		const cwdRelative = relative(this.gitRoot, cwd);
+		if (!isAbsolute(cwdRelative) && cwdRelative !== ".." && !cwdRelative.startsWith(`..${sep}`)) {
+			relativeDir = cwdRelative;
 		}
 
 		// Create full path: worktreeRoot + relativeDir + relativePath
 		const fullPath = resolve(worktreeRoot, relativeDir, relativePath);
 
 		// Ensure the resolved path is within the worktree root
-		if (!fullPath.startsWith(`${worktreeRoot}/`) && fullPath !== worktreeRoot) {
+		const rootRelative = relative(worktreeRoot, fullPath);
+		if (isAbsolute(rootRelative) || rootRelative === ".." || rootRelative.startsWith(`..${sep}`)) {
 			throw new Error(
 				`Path traversal detected: ${relativePath} resolves outside worktree`,
 			);
@@ -286,12 +304,12 @@ export class WorktreeManager {
 				);
 
 				// Ensure destination directory exists
-				const destDir = destPath.substring(0, destPath.lastIndexOf("/"));
+				const destDir = dirname(destPath);
 				if (!existsSync(destDir)) {
 					mkdirSync(destDir, { recursive: true });
 				}
 
-				await $`cp -r ${match} ${destPath}`.quiet();
+				cpSync(match, destPath, { recursive: true });
 				count++;
 			}
 
@@ -310,12 +328,12 @@ export class WorktreeManager {
 			}
 
 			// Ensure destination directory exists
-			const destDir = destPath.substring(0, destPath.lastIndexOf("/"));
+			const destDir = dirname(destPath);
 			if (!existsSync(destDir)) {
 				mkdirSync(destDir, { recursive: true });
 			}
 
-			await $`cp -r ${srcPath} ${destPath}`.quiet();
+			cpSync(srcPath, destPath, { recursive: true });
 			console.log(`Copied ${srcSpec.path} -> ${destSpec.path}`);
 		}
 	}

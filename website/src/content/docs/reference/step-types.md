@@ -13,6 +13,12 @@ Run a shell command:
 { "name": "build", "cmd": "bun run build" }
 ```
 
+Ot uses `sh` on Unix. On Windows it detects and prefers PowerShell (`pwsh`,
+then Windows PowerShell) and falls back to `cmd.exe`. Set
+`OT_SHELL=auto|pwsh|powershell|cmd|sh|bash` to override detection. Commands use
+the selected shell's native syntax. Shell scripts require an installed POSIX
+shell with `OT_SHELL=sh` or `OT_SHELL=bash`.
+
 `name` is the stable step id used by `dependsOn`. Add `displayName` when you want a friendlier label in progress output:
 
 ```json

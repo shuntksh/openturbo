@@ -3,6 +3,11 @@
  */
 
 import { appendShellArgs, createChangedFilesEnv } from "../changed-files";
+import {
+	buildShellCommand,
+	resolveShell,
+	shellScriptHint,
+} from "../shell";
 import { type ActionResult, withTiming } from "./types";
 
 /**
@@ -14,13 +19,6 @@ export type CmdActionOptions = {
 	readonly changedFiles?: readonly string[];
 	readonly changedFilesSpecified?: boolean;
 };
-
-function getShellCommand(command: string): string[] {
-	if (process.platform === "win32") {
-		return ["cmd.exe", "/d", "/s", "/c", command];
-	}
-	return ["sh", "-c", command];
-}
 
 async function readPipe(
 	stream: ReadableStream<Uint8Array> | null,
@@ -53,7 +51,17 @@ export async function runCmdAction(
 	options: CmdActionOptions,
 ): Promise<ActionResult> {
 	return withTiming(async () => {
+		const shell = resolveShell();
 		const changedFiles = options.changedFiles ?? [];
+		const changedFileArgEnv =
+			shell.kind === "cmd"
+				? Object.fromEntries(
+						changedFiles.map((file, index) => [
+							`OT_CHANGED_FILE_ARG_${index}`,
+							file,
+						]),
+					)
+				: {};
 		if (options.appendChangedFiles && options.changedFilesSpecified) {
 			if (changedFiles.length === 0) {
 				return {
@@ -62,20 +70,37 @@ export async function runCmdAction(
 				};
 			}
 		}
+		if (options.appendChangedFiles && shell.kind === "cmd") {
+			const invalidFile = changedFiles.find((file) => /[\0"<>|?*]/.test(file));
+			if (invalidFile !== undefined) {
+				return {
+					success: false,
+					output:
+						`Cannot append changed file ${JSON.stringify(invalidFile)} through cmd.exe: ` +
+						"the path contains a character forbidden in Windows filenames.",
+				};
+			}
+		}
 
 		const command =
 			options.appendChangedFiles && changedFiles.length > 0
-				? appendShellArgs(cmd, changedFiles)
+				? shell.kind === "cmd"
+					? `${cmd.trimEnd()} ${changedFiles
+							.map((_, index) => `"%OT_CHANGED_FILE_ARG_${index}%"`)
+							.join(" ")}`
+					: appendShellArgs(cmd, changedFiles, shell.kind)
 				: cmd;
 
-		const proc = Bun.spawn(getShellCommand(command), {
+		const proc = Bun.spawn(buildShellCommand(shell, command), {
 			env: {
 				...process.env,
 				...createChangedFilesEnv(changedFiles),
+				...changedFileArgEnv,
 			},
 			stderr: "pipe",
 			stdin: "ignore",
 			stdout: "pipe",
+			windowsVerbatimArguments: shell.kind === "cmd",
 		});
 
 		const [exitCode, stdout, stderr] = await Promise.all([
@@ -83,8 +108,9 @@ export async function runCmdAction(
 			readPipe(proc.stdout),
 			readPipe(proc.stderr),
 		]);
-		const output = stdout + (stderr ? (stdout ? "\n" : "") + stderr : "");
+		let output = stdout + (stderr ? (stdout ? "\n" : "") + stderr : "");
 		const success = exitCode === 0;
+		if (!success) output += shellScriptHint(command, shell);
 
 		if (options.verbose && output.trim()) {
 			console.log(output);

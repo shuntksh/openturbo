@@ -125,15 +125,15 @@ describe("Integration: Basic Workflows", () => {
 						steps: [
 							{
 								name: "first",
-								cmd: "sleep 0.2; printf 'one\\n' > order.txt",
+								cmd: `bun -e "await Bun.sleep(200); await Bun.write('order.txt', 'one\\n')"`,
 							},
 							{
 								name: "second",
-								cmd: "test -f order.txt && printf 'two\\n' >> order.txt",
+								cmd: `bun -e "const f=Bun.file('order.txt'); if (!(await f.exists())) process.exit(1); await Bun.write('order.txt', (await f.text()) + 'two\\n')"`,
 							},
 							{
 								name: "show",
-								cmd: "cat order.txt",
+								cmd: `bun -e "process.stdout.write(await Bun.file('order.txt').text())"`,
 								dependsOn: ["second"],
 							},
 						],
@@ -163,16 +163,16 @@ describe("Integration: Basic Workflows", () => {
 						steps: [
 							{
 								name: "first",
-								cmd: "printf 'first\\n' >> dep-order.txt",
+								cmd: `bun -e "const f=Bun.file('dep-order.txt'); await Bun.write('dep-order.txt', (await f.text()) + 'first\\n')"`,
 								dependsOn: ["second"],
 							},
 							{
 								name: "second",
-								cmd: "printf 'second\\n' > dep-order.txt",
+								cmd: `bun -e "await Bun.write('dep-order.txt', 'second\\n')"`,
 							},
 							{
 								name: "show",
-								cmd: "cat dep-order.txt",
+								cmd: `bun -e "process.stdout.write(await Bun.file('dep-order.txt').text())"`,
 								dependsOn: ["first"],
 							},
 						],
@@ -200,23 +200,23 @@ describe("Integration: Basic Workflows", () => {
 						steps: [
 							{
 								name: "line-count",
-								cmd: "test -f lint-done.txt && printf 'line-count\\n' >> nested-order.txt",
+								cmd: `bun -e "if (!(await Bun.file('lint-done.txt').exists())) process.exit(1); require('node:fs').appendFileSync('nested-order.txt', 'line-count\\n')"`,
 								dependsOn: ["lint"],
 							},
 							{
 								name: "boundary",
-								cmd: "test -f lint-done.txt && printf 'boundary\\n' >> nested-order.txt",
+								cmd: `bun -e "if (!(await Bun.file('lint-done.txt').exists())) process.exit(1); require('node:fs').appendFileSync('nested-order.txt', 'boundary\\n')"`,
 								dependsOn: ["lint"],
 							},
 						],
 					},
 					{
 						name: "lint",
-						cmd: "printf 'lint\\n' > lint-done.txt",
+						cmd: `bun -e "await Bun.write('lint-done.txt', 'lint\\n')"`,
 					},
 					{
 						name: "show",
-						cmd: "cat lint-done.txt nested-order.txt",
+						cmd: `bun -e "process.stdout.write(await Bun.file('lint-done.txt').text()); process.stdout.write(await Bun.file('nested-order.txt').text())"`,
 						dependsOn: ["repo-scripts"],
 					},
 				],

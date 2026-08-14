@@ -5,6 +5,7 @@ import {
 	readFileSync,
 	rmSync,
 	mkdtempSync,
+	realpathSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -24,8 +25,8 @@ describe("WorktreeManager", () => {
 	beforeAll(async () => {
 		// Setup temp directory
 		tmpDir = createTempDir();
-		// Resolve physical path to match realpath behavior (like the fish test)
-		tmpDir = await $`realpath ${tmpDir}`.text().then((t) => t.trim());
+		// Resolve physical path without relying on the Unix realpath executable.
+		tmpDir = realpathSync(tmpDir);
 
 		gitRoot = join(tmpDir, "repo");
 		mkdirSync(gitRoot);
@@ -63,7 +64,7 @@ describe("WorktreeManager", () => {
 		const list = await manager.list();
 		const created = list.find((w) => w.branch === "feat-1");
 		expect(created).toBeDefined();
-		expect(created?.path).toBe(worktreePath);
+		expect(created && join(created.path)).toBe(join(worktreePath));
 	});
 
 	test("add nested worktree", async () => {

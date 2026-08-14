@@ -3,6 +3,7 @@
  */
 
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { quoteShellArgument, type ShellKind } from "./shell";
 
 const CHANGED_FILES_REST_FLAGS = new Set(["--changed-files", "--files"]);
 const CHANGED_FILE_FLAGS = new Set(["--changed-file"]);
@@ -134,18 +135,16 @@ export function scopeChangedFilesToDirectory(
 	return scopedFiles;
 }
 
-export function shellQuote(value: string): string {
-	if (value.length > 0 && /^[A-Za-z0-9_./:@%+=,-]+$/.test(value)) {
-		return value;
-	}
-	return `'${value.replace(/'/g, "'\\''")}'`;
+export function shellQuote(value: string, shell: ShellKind = "posix"): string {
+	return quoteShellArgument(value, shell);
 }
 
 export function appendShellArgs(
 	command: string,
 	args: readonly string[],
+	shell: ShellKind = "posix",
 ): string {
 	if (args.length === 0) return command;
-	const quotedArgs = args.map(shellQuote).join(" ");
+	const quotedArgs = args.map((arg) => shellQuote(arg, shell)).join(" ");
 	return `${command.trimEnd()} ${quotedArgs}`;
 }

@@ -291,6 +291,13 @@ Run a shell command:
 { "name": "build", "cmd": "bun run build" }
 ```
 
+Ot uses `sh` on Unix. On Windows it detects and prefers PowerShell (`pwsh`,
+then Windows PowerShell) and falls back to `cmd.exe`. Override detection with
+`OT_SHELL=auto|pwsh|powershell|cmd|sh|bash`. Commands use the selected shell's
+native syntax; a `.sh` script requires `OT_SHELL=sh` or `OT_SHELL=bash` and an
+installed POSIX shell. If the requested shell is unavailable, Ot reports how
+to select or install a compatible shell.
+
 Append CLI-provided changed files to a command:
 
 ```json
