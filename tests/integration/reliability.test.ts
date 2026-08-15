@@ -122,4 +122,81 @@ describe("Integration: Reliability and Output", () => {
 
 		await project.cleanup();
 	});
+
+	test("should kill active command trees when the workflow is terminated", async () => {
+		const project = await createTestProject("reliability-cancellation");
+		const delayedChild = Buffer.from(
+			`setTimeout(() => Bun.write("cancel-marker.txt", "alive"), 1200); setInterval(() => {}, 50);`,
+		).toString("base64");
+		const command = `bun -e "await Bun.write('ready.txt', 'ready'); Bun.spawn(['bun', '-e', Buffer.from('${delayedChild}', 'base64').toString()], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' }); setInterval(() => {}, 50)"`;
+
+		await project.writeJson("workflows.json", {
+			cancel: { steps: [{ name: "hang", cmd: command }] },
+		});
+
+		const cliPath = join(process.cwd(), "src/cmd.ts");
+		const proc = Bun.spawn(["bun", "run", cliPath, "cancel"], {
+			cwd: project.dir,
+			stderr: "ignore",
+			stdout: "ignore",
+		});
+		try {
+			const readyPath = join(project.dir, "ready.txt");
+			const deadline = Date.now() + 5000;
+			while (!existsSync(readyPath) && Date.now() < deadline) {
+				await Bun.sleep(25);
+			}
+			expect(existsSync(readyPath)).toBe(true);
+
+			// Windows must survive abrupt supervisor death through KILL_ON_JOB_CLOSE;
+			// POSIX receives a catchable termination request so it can kill its groups.
+			proc.kill(process.platform === "win32" ? "SIGKILL" : "SIGTERM");
+			await proc.exited;
+			await Bun.sleep(1500);
+			expect(existsSync(join(project.dir, "cancel-marker.txt"))).toBe(false);
+		} finally {
+			try {
+				proc.kill("SIGKILL");
+			} catch {}
+			await project.cleanup();
+		}
+	});
+
+	if (process.platform === "win32") {
+		test("nested workflows reuse inherited Windows containment", async () => {
+			const project = await createTestProject("reliability-nested-owner");
+			const cliPath = join(process.cwd(), "src/cmd.ts");
+			const delayedChild = Buffer.from(
+				`setTimeout(() => Bun.write("nested-leak.txt", "alive"), 700); setInterval(() => {}, 50);`,
+			).toString("base64");
+			await project.writeJson("workflows.json", {
+				inner: {
+					steps: [
+						{
+							name: "inner-command",
+							cmd: `bun -e "if (process.env.OT_PROCESS_OWNER_WINDOWS_JOB !== '1') process.exit(2); const child = Bun.spawn(['bun', '-e', Buffer.from('${delayedChild}', 'base64').toString()], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' }); child.unref(); await Bun.write('nested-owned.txt', 'yes')"`,
+						},
+					],
+				},
+				outer: {
+					steps: [
+						{
+							name: "nested-ot",
+							cmd: `bun run ${JSON.stringify(cliPath)} inner --no-color`,
+						},
+					],
+				},
+			});
+
+			try {
+				const result = await project.runCLI(["outer"]);
+				expect(result.exitCode).toBe(0);
+				expect(existsSync(join(project.dir, "nested-owned.txt"))).toBe(true);
+				await Bun.sleep(900);
+				expect(existsSync(join(project.dir, "nested-leak.txt"))).toBe(false);
+			} finally {
+				await project.cleanup();
+			}
+		}, 10_000);
+	}
 });

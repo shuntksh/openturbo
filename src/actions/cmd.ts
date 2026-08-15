@@ -3,11 +3,8 @@
  */
 
 import { appendShellArgs, createChangedFilesEnv } from "../changed-files";
-import {
-	buildShellCommand,
-	resolveShell,
-	shellScriptHint,
-} from "../shell";
+import { spawnProcessTree } from "../process-tree";
+import { buildShellCommand, resolveShell, shellScriptHint } from "../shell";
 import { type ActionResult, withTiming } from "./types";
 
 /**
@@ -91,15 +88,12 @@ export async function runCmdAction(
 					: appendShellArgs(cmd, changedFiles, shell.kind)
 				: cmd;
 
-		const proc = Bun.spawn(buildShellCommand(shell, command), {
+		const proc = await spawnProcessTree(buildShellCommand(shell, command), {
 			env: {
 				...process.env,
 				...createChangedFilesEnv(changedFiles),
 				...changedFileArgEnv,
 			},
-			stderr: "pipe",
-			stdin: "ignore",
-			stdout: "pipe",
 			windowsVerbatimArguments: shell.kind === "cmd",
 		});
 

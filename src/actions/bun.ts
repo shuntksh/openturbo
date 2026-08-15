@@ -13,6 +13,7 @@ import {
 	type TaskNode,
 	topologicalSort,
 } from "../npm-workspace";
+import { spawnProcessTree } from "../process-tree";
 import type { NestedTask, ProgressPrinter } from "../progress-printer";
 import {
 	checkTaskCache,
@@ -87,23 +88,6 @@ async function mapWithConcurrency<T, R>(
 	const workerCount = Math.min(limit, items.length);
 	await Promise.all(Array.from({ length: workerCount }, () => worker()));
 	return results;
-}
-
-function killProcessTree(proc: Bun.Subprocess<"ignore", "pipe", "pipe">): void {
-	if (process.platform !== "win32") {
-		try {
-			process.kill(-proc.pid, "SIGKILL");
-			return;
-		} catch {
-			// Fall back to killing the direct child if process-group kill is unavailable.
-		}
-	}
-
-	try {
-		proc.kill("SIGKILL");
-	} catch {
-		// The process may already have exited between timeout and kill.
-	}
 }
 
 function normalizeOutput(
@@ -188,16 +172,12 @@ async function runPackageScript(
 			args.push("--", ...changedFiles);
 		}
 
-		const proc = Bun.spawn(args, {
+		const proc = await spawnProcessTree(args, {
 			cwd: node.packagePath,
-			detached: process.platform !== "win32",
 			env: {
 				...process.env,
 				...createChangedFilesEnv(changedFiles),
 			},
-			stderr: "pipe",
-			stdin: "ignore",
-			stdout: "pipe",
 		});
 		const stdoutPromise = new Response(proc.stdout).text();
 		const stderrPromise = new Response(proc.stderr).text();
@@ -205,7 +185,7 @@ async function runPackageScript(
 		if (hardTimeoutMs !== undefined && hardTimeoutMs > 0) {
 			timeoutId = setTimeout(() => {
 				timedOut = true;
-				killProcessTree(proc);
+				proc.terminate();
 			}, hardTimeoutMs);
 			timeoutId.unref?.();
 		}

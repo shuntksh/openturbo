@@ -25,6 +25,7 @@ import {
 	runWorktreeCpAction,
 	shouldRunOnBranch,
 } from "../mod";
+import { withProcessOwner } from "../process-tree";
 
 type StepSchedulingMode = "parallel" | "sequential";
 
@@ -400,7 +401,7 @@ export type HandleRunOptions = {
 	readonly c: ColorFn;
 };
 
-export async function handleRun(options: HandleRunOptions): Promise<number> {
+async function handleRunOwned(options: HandleRunOptions): Promise<number> {
 	const {
 		jobName,
 		configPath,
@@ -487,4 +488,8 @@ export async function handleRun(options: HandleRunOptions): Promise<number> {
 
 	const hasFailures = states.some((s) => s.status === "failed");
 	return hasFailures ? 1 : 0;
+}
+
+export async function handleRun(options: HandleRunOptions): Promise<number> {
+	return withProcessOwner(() => handleRunOwned(options));
 }

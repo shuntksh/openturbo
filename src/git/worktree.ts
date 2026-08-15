@@ -1,9 +1,9 @@
 import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { $ } from "bun";
 import { GitUtil } from "../mod";
-import type { Config, WorktreeHook } from "../types";
+import { runProcessTree, spawnProcessTree } from "../process-tree";
 import { buildShellCommand, resolveShell, shellScriptHint } from "../shell";
+import type { Config, WorktreeHook } from "../types";
 
 /**
  * Worktree manager for creating and managing git worktrees.
@@ -71,10 +71,10 @@ export class WorktreeManager {
 		}
 
 		console.log(`Creating worktree for ${branch} at ${worktreePath}...`);
-		const result = await $`${cmd}`.cwd(this.gitRoot).quiet().nothrow();
+		const result = await runProcessTree(cmd, { cwd: this.gitRoot });
 
 		if (result.exitCode !== 0) {
-			throw new Error(`Failed to create worktree: ${result.stderr.toString()}`);
+			throw new Error(`Failed to create worktree: ${result.stderr}`);
 		}
 
 		await this.runHooks(worktreePath);
@@ -108,22 +108,21 @@ export class WorktreeManager {
 		cmd.push(wt.path);
 
 		console.log(`Removing worktree at ${wt.path}...`);
-		const result = await $`${cmd}`.cwd(this.gitRoot).quiet().nothrow();
+		const result = await runProcessTree(cmd, { cwd: this.gitRoot });
 
 		if (result.exitCode !== 0) {
-			throw new Error(`Failed to remove worktree: ${result.stderr.toString()}`);
+			throw new Error(`Failed to remove worktree: ${result.stderr}`);
 		}
 
 		if (options.deleteBranch) {
 			const deleteCmd = ["git", "branch", "-D", branch]; // -D forces delete
 			console.log(`Deleting branch ${branch}...`);
-			const deleteResult = await $`${deleteCmd}`
-				.cwd(this.gitRoot)
-				.quiet()
-				.nothrow();
+			const deleteResult = await runProcessTree(deleteCmd, {
+				cwd: this.gitRoot,
+			});
 			if (deleteResult.exitCode !== 0) {
 				console.warn(
-					`Warning: Failed to delete branch ${branch}: ${deleteResult.stderr.toString()}`,
+					`Warning: Failed to delete branch ${branch}: ${deleteResult.stderr}`,
 				);
 			}
 		}
@@ -131,10 +130,15 @@ export class WorktreeManager {
 
 	private async getHead(path: string): Promise<string> {
 		try {
-			const result = await $`git -C ${path} rev-parse --short HEAD`
-				.quiet()
-				.text();
-			return result.trim();
+			const result = await runProcessTree([
+				"git",
+				"-C",
+				path,
+				"rev-parse",
+				"--short",
+				"HEAD",
+			]);
+			return result.exitCode === 0 ? result.stdout.trim() : "unknown";
 		} catch {
 			return "unknown";
 		}
@@ -178,10 +182,8 @@ export class WorktreeManager {
 		// Run command inside the new worktree
 		// Note: worktreePath is absolute
 		const shell = resolveShell();
-		const proc = Bun.spawn(buildShellCommand(shell, hook.cmd), {
+		const proc = await spawnProcessTree(buildShellCommand(shell, hook.cmd), {
 			cwd: worktreePath,
-			stderr: "pipe",
-			stdout: "pipe",
 			windowsVerbatimArguments: shell.kind === "cmd",
 		});
 		const [exitCode, stdout, stderr] = await Promise.all([
@@ -226,7 +228,11 @@ export class WorktreeManager {
 		// Compute the relative directory from gitRoot to cwd
 		let relativeDir = "";
 		const cwdRelative = relative(this.gitRoot, cwd);
-		if (!isAbsolute(cwdRelative) && cwdRelative !== ".." && !cwdRelative.startsWith(`..${sep}`)) {
+		if (
+			!isAbsolute(cwdRelative) &&
+			cwdRelative !== ".." &&
+			!cwdRelative.startsWith(`..${sep}`)
+		) {
 			relativeDir = cwdRelative;
 		}
 
@@ -235,7 +241,11 @@ export class WorktreeManager {
 
 		// Ensure the resolved path is within the worktree root
 		const rootRelative = relative(worktreeRoot, fullPath);
-		if (isAbsolute(rootRelative) || rootRelative === ".." || rootRelative.startsWith(`..${sep}`)) {
+		if (
+			isAbsolute(rootRelative) ||
+			rootRelative === ".." ||
+			rootRelative.startsWith(`..${sep}`)
+		) {
 			throw new Error(
 				`Path traversal detected: ${relativePath} resolves outside worktree`,
 			);

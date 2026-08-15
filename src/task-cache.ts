@@ -6,8 +6,8 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
-import { $ } from "bun";
 import type { TaskNode } from "./npm-workspace";
+import { runProcessTree } from "./process-tree";
 import type { BunAction, BunCache } from "./types";
 
 const CACHE_VERSION = 1;
@@ -115,25 +115,24 @@ async function collectGitFiles(
 	gitRoot: string,
 	pathspec: string | undefined,
 ): Promise<readonly string[]> {
-	const result =
-		pathspec && pathspec !== "."
-			? await $`git ls-files -z --cached --modified --others --exclude-standard -- ${pathspec}`
-					.cwd(gitRoot)
-					.quiet()
-					.nothrow()
-			: await $`git ls-files -z --cached --modified --others --exclude-standard`
-					.cwd(gitRoot)
-					.quiet()
-					.nothrow();
+	const args = [
+		"git",
+		"ls-files",
+		"-z",
+		"--cached",
+		"--modified",
+		"--others",
+		"--exclude-standard",
+	];
+	if (pathspec && pathspec !== ".") args.push("--", pathspec);
+	const result = await runProcessTree(args, { cwd: gitRoot });
 
 	if (result.exitCode !== 0) {
 		return [];
 	}
 
 	return [
-		...new Set(
-			result.stdout.toString().split("\0").filter(Boolean).map(toPosixPath),
-		),
+		...new Set(result.stdout.split("\0").filter(Boolean).map(toPosixPath)),
 	].sort();
 }
 

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { $ } from "bun";
+import { runProcessTree } from "./process-tree";
 import type { WorktreeInfo } from "./types";
 
 type GitOptions = {
@@ -7,39 +7,37 @@ type GitOptions = {
 };
 
 async function getGitRoot(options: GitOptions = {}): Promise<string> {
-	const $cmd = options.cwd
-		? $`git rev-parse --show-toplevel`.cwd(options.cwd)
-		: $`git rev-parse --show-toplevel`;
-	const result = await $cmd.quiet().nothrow();
+	const result = await runProcessTree(["git", "rev-parse", "--show-toplevel"], {
+		cwd: options.cwd,
+	});
 	if (result.exitCode !== 0) {
 		throw new Error("Not in a git repository");
 	}
-	return result.text().trim();
+	return result.stdout.trim();
 }
 
 async function getCurrentBranch(options: GitOptions = {}): Promise<string> {
-	const $cmd = options.cwd
-		? $`git branch --show-current`.cwd(options.cwd)
-		: $`git branch --show-current`;
-	const result = await $cmd.quiet().nothrow();
+	const result = await runProcessTree(["git", "branch", "--show-current"], {
+		cwd: options.cwd,
+	});
 	if (result.exitCode !== 0) {
 		throw new Error("Failed to get current branch");
 	}
-	return result.text().trim();
+	return result.stdout.trim();
 }
 
 async function getWorktrees(
 	options: GitOptions = {},
 ): Promise<readonly WorktreeInfo[]> {
-	const $cmd = options.cwd
-		? $`git worktree list --porcelain`.cwd(options.cwd)
-		: $`git worktree list --porcelain`;
-	const result = await $cmd.quiet().nothrow();
+	const result = await runProcessTree(
+		["git", "worktree", "list", "--porcelain"],
+		{ cwd: options.cwd },
+	);
 	if (result.exitCode !== 0) {
 		return [];
 	}
 
-	const output = result.text().trim();
+	const output = result.stdout.trim();
 	if (!output) {
 		return [];
 	}
