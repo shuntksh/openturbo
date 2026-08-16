@@ -4,6 +4,171 @@ import { join } from "node:path";
 import { createTestProject } from "./utils";
 
 describe("Integration: Reliability and Output", () => {
+	if (process.platform === "darwin" || process.platform === "linux") {
+		test("external containment is empty before terminal control returns", async () => {
+			const project = await createTestProject(
+				"reliability-inherited-containment",
+			);
+			await project.writeFile(
+				"containment-probe.ts",
+				`import { dlopen } from "bun:ffi";
+const libc = dlopen(process.platform === "darwin" ? "/usr/lib/libSystem.B.dylib" : "libc.so.6", {
+  getpgrp: { args: [], returns: "i32" },
+});
+await Bun.write("workflow-process.json", JSON.stringify({ pid: process.pid, pgid: libc.symbols.getpgrp() }));
+setInterval(() => {}, 50);`,
+			);
+			await project.writeJson("workflows.json", {
+				cancel: {
+					steps: [
+						{
+							name: "contained-command",
+							cmd: "bun containment-probe.ts",
+						},
+					],
+				},
+			});
+
+			const cliPath = join(process.cwd(), "src/cmd.ts");
+			const proc = Bun.spawn(["bun", "run", cliPath, "cancel", "--no-color"], {
+				cwd: project.dir,
+				detached: true,
+				env: { ...process.env, OT_PROCESS_CONTAINMENT: "inherited" },
+				stderr: "ignore",
+				stdout: "ignore",
+			});
+			let workflowPid: number | undefined;
+			try {
+				const pidPath = join(project.dir, "workflow-process.json");
+				const deadline = Date.now() + 5000;
+				while (!existsSync(pidPath) && Date.now() < deadline) {
+					await Bun.sleep(25);
+				}
+				expect(existsSync(pidPath)).toBe(true);
+				const workflowProcess = (await Bun.file(pidPath).json()) as {
+					pid: number;
+					pgid: number;
+				};
+				workflowPid = workflowProcess.pid;
+				expect(workflowProcess.pgid).toBe(proc.pid);
+
+				// The external owner cancels its complete process group before it lets
+				// the shell print the next prompt. No nested OT group can survive here.
+				process.kill(-proc.pid, "SIGKILL");
+			} finally {
+				try {
+					process.kill(-proc.pid, "SIGKILL");
+				} catch {}
+				if (workflowPid !== undefined) {
+					try {
+						process.kill(-workflowPid, "SIGKILL");
+					} catch {}
+				}
+				await proc.exited;
+				await project.cleanup();
+			}
+		}, 10_000);
+
+		test("one inherited SIGINT cancels parallel, workspace, and nested commands", async () => {
+			const project = await createTestProject(
+				"reliability-inherited-cancellation-matrix",
+			);
+			const cliPath = join(process.cwd(), "src/cmd.ts");
+			const probePath = join(project.dir, "cancellation-probe.ts");
+			await project.writeFile(
+				"cancellation-probe.ts",
+				`import { dlopen } from "bun:ffi";
+const libc = dlopen(process.platform === "darwin" ? "/usr/lib/libSystem.B.dylib" : "libc.so.6", {
+  getpgrp: { args: [], returns: "i32" },
+});
+const [readyPath, leakPath] = process.argv.slice(2);
+await Bun.write(readyPath, JSON.stringify({ pid: process.pid, pgid: libc.symbols.getpgrp() }));
+setTimeout(() => Bun.write(leakPath, "survived"), 700);
+setInterval(() => {}, 50);`,
+			);
+
+			const probes = [
+				"parallel-a",
+				"parallel-b",
+				"workspace-a",
+				"workspace-b",
+				"nested",
+			];
+			const probeCommand = (name: string) =>
+				`bun ${JSON.stringify(probePath)} ${JSON.stringify(join(project.dir, `${name}.json`))} ${JSON.stringify(join(project.dir, `${name}.leak`))}`;
+
+			await project.writeJson("package.json", {
+				name: "root",
+				workspaces: ["packages/*"],
+			});
+			await project.writeJson("packages/a/package.json", {
+				name: "workspace-a",
+				scripts: { hang: probeCommand("workspace-a") },
+			});
+			await project.writeJson("packages/b/package.json", {
+				name: "workspace-b",
+				scripts: { hang: probeCommand("workspace-b") },
+			});
+			await project.writeJson("workflows.json", {
+				inner: {
+					steps: [{ name: "inner-command", cmd: probeCommand("nested") }],
+				},
+				cancel: {
+					steps: [
+						{ name: "parallel-a", cmd: probeCommand("parallel-a") },
+						{ name: "parallel-b", cmd: probeCommand("parallel-b") },
+						{
+							name: "workspaces",
+							bun: { script: "hang", parallel: -1 },
+						},
+						{
+							name: "nested",
+							cmd: `bun run ${JSON.stringify(cliPath)} inner --no-color`,
+						},
+					],
+				},
+			});
+
+			const proc = Bun.spawn(["bun", "run", cliPath, "cancel", "--no-color"], {
+				cwd: project.dir,
+				detached: true,
+				env: { ...process.env, OT_PROCESS_CONTAINMENT: "inherited" },
+				stderr: "ignore",
+				stdout: "ignore",
+			});
+			try {
+				const deadline = Date.now() + 5000;
+				while (
+					!probes.every((name) =>
+						existsSync(join(project.dir, `${name}.json`)),
+					) &&
+					Date.now() < deadline
+				) {
+					await Bun.sleep(25);
+				}
+				for (const name of probes) {
+					const statePath = join(project.dir, `${name}.json`);
+					expect(existsSync(statePath)).toBe(true);
+					const state = (await Bun.file(statePath).json()) as { pgid: number };
+					expect(state.pgid).toBe(proc.pid);
+				}
+
+				process.kill(-proc.pid, "SIGINT");
+				expect(await proc.exited).toBe(130);
+				await Bun.sleep(900);
+				for (const name of probes) {
+					expect(existsSync(join(project.dir, `${name}.leak`))).toBe(false);
+				}
+			} finally {
+				try {
+					process.kill(-proc.pid, "SIGKILL");
+				} catch {}
+				await proc.exited;
+				await project.cleanup();
+			}
+		}, 10_000);
+	}
+
 	test("should preserve failure details in large outputs", async () => {
 		const project = await createTestProject("reliability-truncation");
 

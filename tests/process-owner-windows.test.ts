@@ -2,6 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+	INHERITED_PROCESS_CONTAINMENT,
+	PROCESS_CONTAINMENT_ENV,
+} from "../src/process-owner/containment";
 import { WindowsProcessOwner } from "../src/process-owner/windows";
 
 const windowsDescribe = process.platform === "win32" ? describe : describe.skip;
@@ -37,10 +41,12 @@ windowsDescribe("Windows process owner lifecycle", () => {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	});
+});
 
-	test("an inherited nested owner does not attempt another Job assignment", async () => {
-		const original = process.env.OT_PROCESS_OWNER_WINDOWS_JOB;
-		process.env.OT_PROCESS_OWNER_WINDOWS_JOB = "1";
+describe("Windows inherited process containment", () => {
+	test("does not load or assign a nested Job Object", async () => {
+		const original = process.env[PROCESS_CONTAINMENT_ENV];
+		process.env[PROCESS_CONTAINMENT_ENV] = INHERITED_PROCESS_CONTAINMENT;
 		let assignments = 0;
 		try {
 			const owner = new WindowsProcessOwner({
@@ -48,14 +54,19 @@ windowsDescribe("Windows process owner lifecycle", () => {
 					assignments++;
 				},
 			});
-			const proc = await owner.spawn(["bun", "-e", "process.exit(0)"]);
+			const proc = await owner.spawn([
+				"bun",
+				"-e",
+				"console.log(process.env.OT_PROCESS_CONTAINMENT)",
+			]);
+			const output = new Response(proc.stdout).text();
 			expect(await proc.exited).toBe(0);
+			expect((await output).trim()).toBe(INHERITED_PROCESS_CONTAINMENT);
 			await owner.shutdown();
 			expect(assignments).toBe(0);
 		} finally {
-			if (original === undefined)
-				delete process.env.OT_PROCESS_OWNER_WINDOWS_JOB;
-			else process.env.OT_PROCESS_OWNER_WINDOWS_JOB = original;
+			if (original === undefined) delete process.env[PROCESS_CONTAINMENT_ENV];
+			else process.env[PROCESS_CONTAINMENT_ENV] = original;
 		}
 	});
 });

@@ -1,6 +1,10 @@
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+	hasInheritedProcessContainment,
+	inheritProcessContainment,
+} from "./containment";
 import type { OwnedProcess, OwnedSpawnOptions, ProcessOwner } from "./types";
 
 const OWNER_MARKER = "OT_PROCESS_OWNER_POSIX";
@@ -43,7 +47,8 @@ type ActiveTask = {
 
 export class PosixProcessOwner implements ProcessOwner {
 	readonly kind = "posix" as const;
-	private readonly inherited = process.env[OWNER_MARKER] === "1";
+	private readonly inherited =
+		hasInheritedProcessContainment() || process.env[OWNER_MARKER] === "1";
 	private readonly tasks = new Set<ActiveTask>();
 	private stopping = false;
 
@@ -119,7 +124,10 @@ export class PosixProcessOwner implements ProcessOwner {
 	): Promise<OwnedProcess> {
 		const proc = Bun.spawn([...command], {
 			cwd: options.cwd,
-			env: { ...process.env, ...options.env, [OWNER_MARKER]: "1" },
+			env: {
+				...inheritProcessContainment({ ...process.env, ...options.env }),
+				[OWNER_MARKER]: "1",
+			},
 			stderr: "pipe",
 			stdin: "ignore",
 			stdout: "pipe",

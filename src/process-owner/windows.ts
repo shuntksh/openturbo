@@ -1,4 +1,8 @@
 import { dlopen, type Pointer, ptr } from "bun:ffi";
+import {
+	hasInheritedProcessContainment,
+	inheritProcessContainment,
+} from "./containment";
 import type { OwnedProcess, OwnedSpawnOptions, ProcessOwner } from "./types";
 import { createSuspendedWindowsProcess } from "./windows-native";
 
@@ -200,7 +204,8 @@ export type WindowsOwnerTestHooks = {
 
 export class WindowsProcessOwner implements ProcessOwner {
 	readonly kind = "windows" as const;
-	private readonly inherited = process.env[OWNER_MARKER] === "1";
+	private readonly inherited =
+		hasInheritedProcessContainment() || process.env[OWNER_MARKER] === "1";
 	private readonly rootJob = this.inherited
 		? undefined
 		: new WindowsJob("workflow Job Object");
@@ -287,7 +292,10 @@ export class WindowsProcessOwner implements ProcessOwner {
 	): Promise<OwnedProcess> {
 		const proc = Bun.spawn([...command], {
 			cwd: options.cwd,
-			env: { ...process.env, ...options.env, [OWNER_MARKER]: "1" },
+			env: {
+				...inheritProcessContainment({ ...process.env, ...options.env }),
+				[OWNER_MARKER]: "1",
+			},
 			stderr: "pipe",
 			stdin: "ignore",
 			stdout: "pipe",
